@@ -4,7 +4,7 @@ const app = express();
 const port = 3000;
 
 // load API_KEY from env
-const OPENAI_API_KEY = "API_KEY";
+const OPENAI_API_KEY = process.env.API_KEY;
 const openai = new OpenAI(OPENAI_API_KEY);
 
 const sendMessage = async (message) => {
