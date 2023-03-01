@@ -21,7 +21,7 @@ const sendMessage = async (message, stream) => {
   	const req = https.request({
 		hostname: "api.openai.com",
 		port: 443,
-		path: "/v1/completions",
+		path: "/v1/chat/completions",
 		method: "POST",
 		headers:{
 			"Content-Type": "application/json",
@@ -36,15 +36,17 @@ const sendMessage = async (message, stream) => {
 	})
 
 	const body = JSON.stringify({
-		model: "text-davinci-003",
-		prompt: message,
-		temperature: 0,
+		model: "gpt-3.5-turbo-0301",
+		messages: [
+        {role: "system", content: "You are a helpful assistant that writes engaging blog articles"},
+        {role: "user", content: message}
+    ],
+		temperature: 0.8,
 		top_p: 1,
 		n: 1,
 		stream: true,
-		logprobs: null,
-		max_tokens: 2048,
-		stream:true
+		max_tokens: 4096 - message.length,
+		stream: true
 	})
 
 	req.on('error', (e) => {
