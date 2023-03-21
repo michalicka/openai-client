@@ -17,7 +17,8 @@ app.use(function (req, res, next) {
     next();
 });
 
-const sendMessage = async (message, stream) => {
+const sendMessage = async (query, stream) => {
+	console.log(query);
   	const req = https.request({
 		hostname: "api.openai.com",
 		port: 443,
@@ -30,24 +31,29 @@ const sendMessage = async (message, stream) => {
 		}
 	}, function(res) {
 		res.on('data', (chunk) => {
-			if (process.env.DEBUG) console.log(chunk.toString().trim());
+			if (process.env.DEBUG) {
+				const data = chunk.toString().trim();
+				const regex = /"content":"([^\"]*?)"/;
+				const match = regex.exec(data);
+				if (match) process.stdout.write(match[1]);
+			}
 			stream.write(chunk);
+			if (chunk.toString().trim().indexOf('data: [DONE]') >= 0) {
+				stream.end();
+				if (process.env.DEBUG) console.log('[DONE]');
+			}
 		});
 	})
 
-	const body = JSON.stringify({
-		model: "gpt-3.5-turbo-0301",
-		messages: [
-        {role: "system", content: "You are a helpful assistant that writes engaging blog articles"},
-        {role: "user", content: message}
-    ],
+	const body = JSON.stringify(Object.assign({}, {
+		model: "gpt-3.5-turbo",
 		temperature: 0.8,
 		top_p: 1,
 		n: 1,
 		stream: true,
-		max_tokens: 4096 - message.length,
+		max_tokens: 4096 - JSON.stringify(query.messages).length,
 		stream: true
-	})
+	}, query))
 
 	req.on('error', (e) => {
 		console.error("problem with request:"+ e.message);
@@ -59,8 +65,22 @@ const sendMessage = async (message, stream) => {
 };
 
 app.get("/", (req, res) => {
-	const { q } = req.query;
-	sendMessage(q, res);
+	const { q, s } = req.query;
+	sendMessage({ messages: [
+		{role: "system", content: s ?? "You are a helpful assistant."},
+		{role: "user", content: q}
+	]}, res);
+});
+
+app.post("/", (req, res) => {
+	let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      const query = JSON.parse(body);
+      sendMessage(query, res);
+    });
 });
 
 http.createServer(app).listen(process.env.HTTP_PORT);
