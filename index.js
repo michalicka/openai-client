@@ -14,6 +14,7 @@ const app = express();
 
 app.use(function (req, res, next) {
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, OpenAI-Organization');
     next();
 });
 
@@ -50,7 +51,6 @@ const sendMessage = async (query, stream) => {
 		temperature: 0.8,
 		top_p: 1,
 		n: 1,
-		stream: true,
 		max_tokens: 4096 - JSON.stringify(query.messages).length,
 		stream: true
 	}, query))
