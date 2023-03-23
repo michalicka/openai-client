@@ -4,6 +4,8 @@ const express = require('express');
 const https = require('https');
 const http = require('http');
 const fs = require('fs');
+const { URL } = require('url');
+
 
 const options = process.env.HTTPS_PORT ? {
   key: fs.readFileSync(process.env.SSL_KEY),
@@ -13,12 +15,51 @@ const options = process.env.HTTPS_PORT ? {
 const app = express();
 
 app.use(function (req, res, next) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+	const url = new URL(req.headers.origin || '');
+    const allowedOrigins = process.env.ALLOW_ORIGIN.split(',');
+	if (process.env.ALLOW_ORIGIN === '*' || allowedOrigins.includes(url.hostname)) {
+	  res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+	} else {
+	  res.setHeader('Access-Control-Allow-Origin', '');
+	}
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, OpenAI-Organization');
     next();
 });
 
-const sendMessage = async (query, stream) => {
+function incrementRequestStats(hostname, count) {
+  if (hostname) {
+    const filename = hostname.replace(/^(https?:\/\/)?(www\.)?/i, '').replace(/\//g, '');
+    const filepath = `./stats/${filename}.json`;
+    const today = new Date().toISOString().slice(0, 10);
+
+    let stats = {};
+    fs.readFile(filepath, 'utf8', (err, data) => {
+      if (err) {
+        if (err.code === 'ENOENT') {
+          data = '{}';
+        } else {
+          console.error(err);
+          return;
+        }
+      } 
+      if (data) {
+        try {
+          stats = JSON.parse(data);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    });
+    stats[today] = (stats[today] || 0) + count;
+    fs.writeFile(filepath, JSON.stringify(stats), (err) => {
+      if (err) {
+        console.error(err);
+      }
+    });
+  }
+}
+
+const sendMessage = async (query, stream, referrer) => {
 	console.log(query);
   	const req = https.request({
 		hostname: "api.openai.com",
@@ -31,6 +72,7 @@ const sendMessage = async (query, stream) => {
 			"OpenAI-Organization": process.env.OPENAI_ORG
 		}
 	}, function(res) {
+		let chunkCount = 0;
 		res.on('data', (chunk) => {
 			if (process.env.DEBUG) {
 				const data = chunk.toString().trim();
@@ -39,9 +81,13 @@ const sendMessage = async (query, stream) => {
 				if (match) process.stdout.write(match[1]);
 			}
 			stream.write(chunk);
+			if (chunk.toString().trim().indexOf('data: {') >= 0) {
+				chunkCount++;
+			}
 			if (chunk.toString().trim().indexOf('data: [DONE]') >= 0) {
 				stream.end();
 				if (process.env.DEBUG) console.log('[DONE]');
+				incrementRequestStats(referrer, chunkCount);
 			}
 		});
 	})
@@ -65,28 +111,30 @@ const sendMessage = async (query, stream) => {
 };
 
 app.get("/", (req, res) => {
+	const url = new URL(req.headers.referer || 'https://localhost');
 	const { q, s } = req.query;
 	sendMessage({ messages: [
 		{role: "system", content: s ?? "You are a helpful assistant."},
 		{role: "user", content: q}
-	]}, res);
+	]}, res, url.hostname);
 });
 
 app.post("/", (req, res) => {
+	const url = new URL(req.headers.referer || 'https://localhost');
 	let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
     });
     req.on('end', () => {
       const query = JSON.parse(body);
-      sendMessage(query, res);
+      sendMessage(query, res, url.hostname);
     });
 });
 
-http.createServer(app).listen(process.env.HTTP_PORT);
-console.log(`Started on http://localhost:${process.env.HTTP_PORT}/`);
+http.createServer(app).listen(process.env.HTTP_PORT || 80);
+console.log(`Started on http://localhost:${process.env.HTTP_PORT || 80}/`);
 
 if (process.env.HTTPS_PORT) {
-	https.createServer(options, app).listen(process.env.HTTPS_PORT);
-	console.log(`Started on https://localhost:${process.env.HTTPS_PORT}/`);
+	https.createServer(options, app).listen(process.env.HTTPS_PORT || 443);
+	console.log(`Started on https://localhost:${process.env.HTTPS_PORT || 443}/`);
 }
