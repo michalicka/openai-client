@@ -32,8 +32,8 @@ function incrementRequestStats(hostname, count) {
     const filepath = `./stats/${filename}.json`;
     const today = new Date().toISOString().slice(0, 10);
 
-    let stats = {};
     fs.readFile(filepath, 'utf8', (err, data) => {
+   	 	let stats = {};
       if (err) {
         if (err.code === 'ENOENT') {
           data = '{}';
@@ -49,12 +49,12 @@ function incrementRequestStats(hostname, count) {
           console.error(err);
         }
       }
-    });
-    stats[today] = (stats[today] || 0) + count;
-    fs.writeFile(filepath, JSON.stringify(stats), (err) => {
-      if (err) {
-        console.error(err);
-      }
+	    stats[today] = (stats[today] || 0) + count;
+	    fs.writeFile(filepath, JSON.stringify(stats), (err) => {
+	      if (err) {
+	        console.error(err);
+	      }
+	    });
     });
   }
 }
