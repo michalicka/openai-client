@@ -29,7 +29,7 @@ app.use(function (req, res, next) {
 function incrementRequestStats(hostname, count) {
   if (hostname) {
   	const filename = hostname.replace(/^(https?:\/\/)?(www\.)?/i, '').replace(/\//g, '');
-    const filepath = path.join(process.env.VERCEL_WORK_DIR || './stats/', `${filename}.json`);
+    const filepath = path.join(process.env.VERCEL_WORK_DIR || 'stats', `${filename}.json`);
     const today = new Date().toISOString().slice(0, 10);
 
     fs.readFile(filepath, 'utf8', (err, data) => {
@@ -153,7 +153,7 @@ app.get('/stats', (req, res) => {
   if (k !== process.env.STATS_ACCESS_KEY) {
   	return res.status(403).send(`Access denied`);
   }
-  const filePath = path.join(process.env.VERCEL_WORK_DIR || './stats/', `${q}.json`);
+  const filePath = path.join(process.env.VERCEL_WORK_DIR || 'stats', `${q}.json`);
   fs.readFile(filePath, 'utf8', (err, data) => {
     if (err) {
       console.error(err);
