@@ -7,7 +7,7 @@ const fs = require('fs');
 const { URL } = require('url');
 
 
-const options = process.env.HTTPS_PORT ? {
+const options = process.env.SERVER_ENV === 'dev' ? {
   key: fs.readFileSync(process.env.SSL_KEY),
   cert: fs.readFileSync(process.env.SSL_CRT)
 } : {};
@@ -113,10 +113,14 @@ const sendMessage = async (query, stream, referrer) => {
 app.get("/", (req, res) => {
 	const url = new URL(req.headers.referer || 'https://localhost');
 	const { q, s } = req.query;
-	sendMessage({ messages: [
+	if (q) sendMessage({ messages: [
 		{role: "system", content: s ?? "You are a helpful assistant."},
 		{role: "user", content: q}
 	]}, res, url.hostname);
+	else {
+		res.writeHead(200);
+  	res.end('');
+	}
 });
 
 app.post("/", (req, res) => {
