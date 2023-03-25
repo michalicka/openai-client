@@ -15,9 +15,8 @@ const options = process.env.SERVER_ENV === 'dev' ? {
 const app = express();
 
 app.use(function (req, res, next) {
-	const url = new URL(req.headers.origin || '');
     const allowedOrigins = process.env.ALLOW_ORIGIN.split(',');
-	if (process.env.ALLOW_ORIGIN === '*' || allowedOrigins.includes(url.hostname)) {
+	if ((process.env.ALLOW_ORIGIN === '*') || (req.headers.origin && allowedOrigins.includes(new URL(req.headers.origin).hostname))) {
 	  res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
 	} else {
 	  res.setHeader('Access-Control-Allow-Origin', '');
@@ -119,7 +118,7 @@ app.get("/", (req, res) => {
 	]}, res, url.hostname);
 	else {
 		res.writeHead(200);
-  	res.end('');
+  	res.end("data: [DONE]");
 	}
 });
 
