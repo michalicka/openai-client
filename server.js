@@ -149,10 +149,10 @@ app.post("/", (req, res) => {
 });
 
 app.get('/stats', (req, res) => {
-  if (!process.env.ALLOWED_IP.split(',').includes(req.ip)) {
-  	return res.status(403).send(`Access denied for ${req.ip}`);
+  const { q, k } = req.query;
+  if (k !== process.env.STATS_ACCESS_KEY) {
+  	return res.status(403).send(`Access denied`);
   }
-  const { q } = req.query;
   const filePath = path.join(process.env.VERCEL_WORK_DIR || './stats/', `${q}.json`);
   fs.readFile(filePath, 'utf8', (err, data) => {
     if (err) {
