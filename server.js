@@ -150,7 +150,7 @@ app.post("/", (req, res) => {
 
 app.get('/stats', (req, res) => {
   if (!process.env.ALLOWED_IP.split(',').includes(req.ip)) {
-  	return res.status(403).send('Access denied');
+  	return res.status(403).send(`Access denied for ${req.ip}`);
   }
   const { q } = req.query;
   const filePath = path.join(process.env.VERCEL_WORK_DIR || './stats/', `${q}.json`);
