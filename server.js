@@ -59,6 +59,19 @@ function incrementRequestStats(hostname, count) {
   }
 }
 
+function sumByMonth(data) {
+  const sumByMonth = {};
+  for (let date in data) {
+    const [year, month] = date.split('-');
+    if (!sumByMonth[`${year}-${month}`]) {
+      sumByMonth[`${year}-${month}`] = 0;
+    }
+    sumByMonth[`${year}-${month}`] += data[date];
+  }
+  return sumByMonth;
+}
+
+
 const sendMessage = async (query, stream, referrer) => {
 	console.log(query);
   	const req = https.request({
@@ -133,6 +146,21 @@ app.post("/", (req, res) => {
       const query = JSON.parse(body);
       sendMessage(query, res, url.hostname);
     });
+});
+
+app.get('/stats', (req, res) => {
+  if (!process.env.ALLOWED_IP.split(',').includes(req.ip)) {
+  	return res.status(403).send('Access denied');
+  }
+  const { q } = req.query;
+  const filePath = path.join(process.env.VERCEL_WORK_DIR || './stats/', `${q}.json`);
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send('Error reading file');
+    }
+    res.send(sumByMonth(JSON.parse(data)));
+  });
 });
 
 http.createServer(app).listen(process.env.HTTP_PORT || 80);
