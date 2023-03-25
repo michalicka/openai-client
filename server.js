@@ -4,6 +4,7 @@ const express = require('express');
 const https = require('https');
 const http = require('http');
 const fs = require('fs');
+const path = require('path');
 const { URL } = require('url');
 
 
@@ -27,8 +28,8 @@ app.use(function (req, res, next) {
 
 function incrementRequestStats(hostname, count) {
   if (hostname) {
-    const filename = hostname.replace(/^(https?:\/\/)?(www\.)?/i, '').replace(/\//g, '');
-    const filepath = `./stats/${filename}.json`;
+  	const filename = hostname.replace(/^(https?:\/\/)?(www\.)?/i, '').replace(/\//g, '');
+    const filepath = path.join(process.env.VERCEL_WORK_DIR || './stats/', `${filename}.json`);
     const today = new Date().toISOString().slice(0, 10);
 
     fs.readFile(filepath, 'utf8', (err, data) => {
